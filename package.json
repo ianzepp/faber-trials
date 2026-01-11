@@ -1,0 +1,23 @@
+{
+    "name": "faber-trials",
+    "version": "1.1.0",
+    "description": "LLM learnability research harness for the Faber programming language",
+    "type": "module",
+    "scripts": {
+        "trial": "bun run harness/runner.ts",
+        "trial:pipeline": "bun run harness/pipeline-runner.ts",
+        "trial:db": "bun run harness/db.ts"
+    },
+    "keywords": [
+        "faber",
+        "research",
+        "llm",
+        "learnability",
+        "evaluation"
+    ],
+    "license": "MIT",
+    "dependencies": {
+        "openai": "^4.68.0",
+        "yaml": "^2.8.2"
+    }
+}
