@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "trial": "bun run harness/runner.ts",
+        "trial:chain": "bun run harness/chain-runner.ts",
         "trial:pipeline": "bun run harness/pipeline-runner.ts",
         "trial:db": "bun run harness/db.ts"
     },

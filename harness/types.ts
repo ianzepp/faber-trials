@@ -185,3 +185,58 @@ export interface Summary {
   total_cost: number
   total_latency_ms: number
 }
+
+// Chain trial types
+
+export interface ChainTask {
+  id: string
+  type: 'chain'
+  judge_prompt: string           // Initial prompt (the "question")
+  prompts?: string[]             // Follow-up prompts between responses (0-2)
+  verdict?: boolean              // Whether to run judge evaluation at end
+  verdict_prompt?: string        // Custom verdict prompt (optional)
+  verdict_criteria?: VerdictCriterion[]  // Structured criteria for judge
+}
+
+export interface VerdictCriterion {
+  id: string
+  description: string
+  scale?: [number, number]       // e.g., [1, 5], defaults to [1, 5]
+}
+
+export interface ChainResponse {
+  stage: number                  // 1, 2, or 3
+  model: string
+  prompt: string                 // Full prompt sent (for debugging)
+  response: string
+  tokens_in: number
+  tokens_out: number
+  latency_ms: number
+  cost: number
+}
+
+export interface ChainVerdict {
+  model: string
+  prompt: string
+  response: string               // Raw judge response
+  scores?: Record<string, number>  // Parsed scores if structured
+  tokens_in: number
+  tokens_out: number
+  latency_ms: number
+  cost: number
+}
+
+export interface ChainResult {
+  timestamp: string
+  run_id: string
+  framework_version: string
+  git_sha?: string
+  task_id: string
+  models: string[]               // Model chain [R1, R2, R3]
+  responses: ChainResponse[]
+  verdict?: ChainVerdict
+  total_tokens_in: number
+  total_tokens_out: number
+  total_latency_ms: number
+  total_cost: number
+}
