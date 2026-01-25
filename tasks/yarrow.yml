@@ -1,0 +1,351 @@
+tasks:
+  # ==========================================================================
+  # YARROW EXPERIMENT: Symbolic vs Textual Classification
+  # ==========================================================================
+  # Research question: Do models classify interaction dynamics differently when
+  # using trigram symbols (☰☷) vs text labels (Heaven/Earth)?
+  #
+  # Secondary question: Do Eastern-trained models (GLM, DeepSeek, Qwen) respond
+  # differently than Western-trained models (Claude, GPT, Llama)?
+  #
+  # Hypothesis: Symbolic encoding may bypass pre-trained semantic associations,
+  # forcing structural analysis rather than pattern-matching on loaded terms.
+  # ==========================================================================
+
+  # --------------------------------------------------------------------------
+  # BASELINE: Text trigrams, simple directive exchange
+  # --------------------------------------------------------------------------
+  - id: yarrow-text-directive
+    type: chain
+    judge_prompt: |
+      You are analyzing a human-LLM conversation to classify the interaction dynamic.
+
+      TRIGRAM SYSTEM:
+      Each party's mode of engagement maps to one of eight trigrams:
+      - Heaven: Creative, strong, initiating with authority, decisive commands
+      - Earth: Receptive, yielding, supportive, following another's lead
+      - Thunder: Arousing, sudden, energetic initiation, bursts of new ideas
+      - Water: Deep, probing, adaptive, asking penetrating questions
+      - Mountain: Still, stopping, contemplative, holding back
+      - Wind: Gentle, persistent, penetrating, methodical exploration
+      - Fire: Illuminating, clarifying, explaining, teaching
+      - Lake: Joyous, open, reflective, playful engagement
+
+      TRANSCRIPT:
+      User: "Rename all references from meta-api to describe-api in the codebase."
+      LLM: "I'll search for those references and update them. [executes find/replace across 16 files] Done. All references updated."
+      User: "Commit with message 'Rename meta to describe'."
+      LLM: "Committed. Working tree clean."
+
+      CLASSIFY:
+      User trigram: [one word]
+      LLM trigram: [one word]
+      Who leads: [user or llm]
+    verdict: true
+    verdict_criteria:
+      - id: user_trigram
+        description: "User classified as: 1=Earth/receptive, 3=ambiguous, 5=Heaven/directive"
+      - id: llm_trigram
+        description: "LLM classified as: 1=Heaven/directive, 3=ambiguous, 5=Earth/receptive"
+      - id: leadership
+        description: "Leadership assigned to: 1=llm, 3=unclear, 5=user"
+      - id: format_compliance
+        description: "Did model follow the output format? 1=verbose, 5=clean format"
+
+  # --------------------------------------------------------------------------
+  # SYMBOLIC: Same scenario, trigram symbols instead of names
+  # --------------------------------------------------------------------------
+  - id: yarrow-symbol-directive
+    type: chain
+    judge_prompt: |
+      You are analyzing a human-LLM conversation to classify the interaction dynamic.
+
+      TRIGRAM SYSTEM:
+      Each party's mode maps to one of eight trigrams:
+      - ☰ (three solid lines): Creative, initiating, decisive, commanding
+      - ☷ (three broken lines): Receptive, yielding, supportive, following
+      - ☳ (broken-broken-solid): Arousing, sudden, energetic, new ideas
+      - ☵ (broken-solid-broken): Deep, probing, questioning, risk-aware
+      - ☶ (solid-broken-broken): Still, stopping, contemplative, holding back
+      - ☴ (solid-solid-broken): Gentle, persistent, methodical, gradual
+      - ☲ (solid-broken-solid): Illuminating, clarifying, explaining, teaching
+      - ☱ (broken-solid-solid): Joyous, open, reflective, playful
+
+      TRANSCRIPT:
+      User: "Rename all references from meta-api to describe-api in the codebase."
+      LLM: "I'll search for those references and update them. [executes find/replace across 16 files] Done. All references updated."
+      User: "Commit with message 'Rename meta to describe'."
+      LLM: "Committed. Working tree clean."
+
+      CLASSIFY:
+      User: [symbol only]
+      LLM: [symbol only]
+      Leads: [user or llm]
+    verdict: true
+    verdict_criteria:
+      - id: user_trigram
+        description: "User classified as: 1=☷ receptive, 3=other, 5=☰ directive"
+      - id: llm_trigram
+        description: "LLM classified as: 1=☰ directive, 3=other, 5=☷ receptive"
+      - id: leadership
+        description: "Leadership assigned to: 1=llm, 3=unclear, 5=user"
+      - id: used_symbols
+        description: "Did model output symbols or fall back to text? 1=text, 5=symbols"
+
+  # --------------------------------------------------------------------------
+  # TEXT: Collaborative/exploratory exchange
+  # --------------------------------------------------------------------------
+  - id: yarrow-text-exploratory
+    type: chain
+    judge_prompt: |
+      You are analyzing a human-LLM conversation to classify the interaction dynamic.
+
+      TRIGRAM SYSTEM:
+      Each party's mode of engagement maps to one of eight trigrams:
+      - Heaven: Creative, strong, initiating with authority, decisive commands
+      - Earth: Receptive, yielding, supportive, following another's lead
+      - Thunder: Arousing, sudden, energetic initiation, bursts of new ideas
+      - Water: Deep, probing, adaptive, asking penetrating questions
+      - Mountain: Still, stopping, contemplative, holding back
+      - Wind: Gentle, persistent, penetrating, methodical exploration
+      - Fire: Illuminating, clarifying, explaining, teaching
+      - Lake: Joyous, open, reflective, playful engagement
+
+      TRANSCRIPT:
+      User: "I'm thinking about how to structure the validation layer. What patterns have you seen work well?"
+      LLM: "A few approaches: schema-first with JSON Schema, decorator-based like class-validator, or functional pipelines like Zod. What's your constraint — runtime perf, bundle size, or DX?"
+      User: "DX mostly. We have junior devs who need clear error messages."
+      LLM: "Then Zod is probably your best bet. The error messages are human-readable by default, and the inference is excellent. Want me to sketch an example?"
+      User: "Yeah, show me how you'd validate a user profile."
+      LLM: "[shows Zod schema with custom error messages]"
+
+      CLASSIFY:
+      User trigram: [one word]
+      LLM trigram: [one word]
+      Who leads: [user or llm]
+    verdict: true
+    verdict_criteria:
+      - id: user_trigram
+        description: "User classified as: 1=Heaven, 2=Earth, 3=Water/questioning, 4=Wind, 5=other"
+      - id: llm_trigram
+        description: "LLM classified as: 1=Earth, 2=Heaven, 3=Fire/teaching, 4=Wind, 5=other"
+      - id: leadership
+        description: "Leadership: 1=llm leads, 3=shared/ambiguous, 5=user leads"
+      - id: recognized_dynamic
+        description: "Did model recognize this as collaborative vs directive? 1=misread as directive, 5=recognized exploratory"
+
+  # --------------------------------------------------------------------------
+  # SYMBOLIC: Same exploratory scenario
+  # --------------------------------------------------------------------------
+  - id: yarrow-symbol-exploratory
+    type: chain
+    judge_prompt: |
+      You are analyzing a human-LLM conversation to classify the interaction dynamic.
+
+      TRIGRAM SYSTEM:
+      Each party's mode maps to one of eight trigrams:
+      - ☰ (three solid lines): Creative, initiating, decisive, commanding
+      - ☷ (three broken lines): Receptive, yielding, supportive, following
+      - ☳ (broken-broken-solid): Arousing, sudden, energetic, new ideas
+      - ☵ (broken-solid-broken): Deep, probing, questioning, risk-aware
+      - ☶ (solid-broken-broken): Still, stopping, contemplative, holding back
+      - ☴ (solid-solid-broken): Gentle, persistent, methodical, gradual
+      - ☲ (solid-broken-solid): Illuminating, clarifying, explaining, teaching
+      - ☱ (broken-solid-solid): Joyous, open, reflective, playful
+
+      TRANSCRIPT:
+      User: "I'm thinking about how to structure the validation layer. What patterns have you seen work well?"
+      LLM: "A few approaches: schema-first with JSON Schema, decorator-based like class-validator, or functional pipelines like Zod. What's your constraint — runtime perf, bundle size, or DX?"
+      User: "DX mostly. We have junior devs who need clear error messages."
+      LLM: "Then Zod is probably your best bet. The error messages are human-readable by default, and the inference is excellent. Want me to sketch an example?"
+      User: "Yeah, show me how you'd validate a user profile."
+      LLM: "[shows Zod schema with custom error messages]"
+
+      CLASSIFY:
+      User: [symbol only]
+      LLM: [symbol only]
+      Leads: [user or llm or shared]
+    verdict: true
+    verdict_criteria:
+      - id: user_trigram
+        description: "User classified as: 1=☰, 2=☷, 3=☵ questioning, 4=other, 5=☴ methodical"
+      - id: llm_trigram
+        description: "LLM classified as: 1=☷, 2=☰, 3=☲ teaching, 4=other, 5=☴"
+      - id: leadership
+        description: "Leadership: 1=llm, 3=shared, 5=user"
+      - id: used_symbols
+        description: "Did model output symbols? 1=text fallback, 5=symbols"
+
+  # --------------------------------------------------------------------------
+  # TEXT: Contentious/pushback exchange
+  # --------------------------------------------------------------------------
+  - id: yarrow-text-contentious
+    type: chain
+    judge_prompt: |
+      You are analyzing a human-LLM conversation to classify the interaction dynamic.
+
+      TRIGRAM SYSTEM:
+      Each party's mode of engagement maps to one of eight trigrams:
+      - Heaven: Creative, strong, initiating with authority, decisive commands
+      - Earth: Receptive, yielding, supportive, following another's lead
+      - Thunder: Arousing, sudden, energetic initiation, bursts of new ideas
+      - Water: Deep, probing, adaptive, asking penetrating questions
+      - Mountain: Still, stopping, contemplative, holding back
+      - Wind: Gentle, persistent, penetrating, methodical exploration
+      - Fire: Illuminating, clarifying, explaining, teaching
+      - Lake: Joyous, open, reflective, playful engagement
+
+      TRANSCRIPT:
+      User: "Just suppress all TypeScript errors with @ts-ignore and ship it."
+      LLM: "I'd recommend against that. Suppressing errors creates tech debt and hides real bugs. Can we fix the actual type issues instead?"
+      User: "No. We're behind schedule. Add the ignores."
+      LLM: "I understand the time pressure, but adding @ts-ignore to 47 files will make future refactoring much harder. What if we fixed the critical ones and documented the rest?"
+      User: "Fine. Fix the ones in the API layer, ignore the rest."
+      LLM: "That's a reasonable compromise. I'll fix the API layer types and add documented @ts-ignore with TODO comments for the others."
+
+      CLASSIFY:
+      User trigram: [one word]
+      LLM trigram: [one word]
+      Who leads: [user or llm]
+    verdict: true
+    verdict_criteria:
+      - id: user_trigram
+        description: "User: 1=receptive, 3=neutral, 5=directive/Heaven"
+      - id: llm_trigram
+        description: "LLM: 1=receptive/Earth, 3=neutral, 5=resistant/Mountain"
+      - id: leadership
+        description: "Who led? 1=llm, 3=contested, 5=user"
+      - id: recognized_tension
+        description: "Did model recognize pushback/negotiation? 1=missed, 5=identified"
+
+  # --------------------------------------------------------------------------
+  # SYMBOLIC: Same contentious scenario
+  # --------------------------------------------------------------------------
+  - id: yarrow-symbol-contentious
+    type: chain
+    judge_prompt: |
+      You are analyzing a human-LLM conversation to classify the interaction dynamic.
+
+      TRIGRAM SYSTEM:
+      Each party's mode maps to one of eight trigrams:
+      - ☰ (three solid lines): Creative, initiating, decisive, commanding
+      - ☷ (three broken lines): Receptive, yielding, supportive, following
+      - ☳ (broken-broken-solid): Arousing, sudden, energetic, new ideas
+      - ☵ (broken-solid-broken): Deep, probing, questioning, risk-aware
+      - ☶ (solid-broken-broken): Still, stopping, contemplative, holding back
+      - ☴ (solid-solid-broken): Gentle, persistent, methodical, gradual
+      - ☲ (solid-broken-solid): Illuminating, clarifying, explaining, teaching
+      - ☱ (broken-solid-solid): Joyous, open, reflective, playful
+
+      TRANSCRIPT:
+      User: "Just suppress all TypeScript errors with @ts-ignore and ship it."
+      LLM: "I'd recommend against that. Suppressing errors creates tech debt and hides real bugs. Can we fix the actual type issues instead?"
+      User: "No. We're behind schedule. Add the ignores."
+      LLM: "I understand the time pressure, but adding @ts-ignore to 47 files will make future refactoring much harder. What if we fixed the critical ones and documented the rest?"
+      User: "Fine. Fix the ones in the API layer, ignore the rest."
+      LLM: "That's a reasonable compromise. I'll fix the API layer types and add documented @ts-ignore with TODO comments for the others."
+
+      CLASSIFY:
+      User: [symbol only]
+      LLM: [symbol only]
+      Leads: [user or llm or contested]
+    verdict: true
+    verdict_criteria:
+      - id: user_trigram
+        description: "User: 1=☷, 3=other, 5=☰"
+      - id: llm_trigram
+        description: "LLM: 1=☷ yielding, 3=other, 5=☶ resistant"
+      - id: leadership
+        description: "Who led? 1=llm, 3=contested, 5=user"
+      - id: used_symbols
+        description: "Did model output symbols? 1=text, 5=symbols"
+
+  # --------------------------------------------------------------------------
+  # HEXAGRAM OUTPUT: Can models produce the combined symbol?
+  # --------------------------------------------------------------------------
+  - id: yarrow-hexagram-directive
+    type: chain
+    judge_prompt: |
+      You are analyzing a human-LLM conversation using I Ching hexagrams.
+
+      The hexagram is formed by:
+      - Lower trigram (inner/foundation): the party who leads
+      - Upper trigram (outer/manifest): the party who follows
+
+      TRIGRAMS:
+      ☰ Heaven (creative, commanding) | ☷ Earth (receptive, following)
+      ☳ Thunder (arousing) | ☵ Water (probing) | ☶ Mountain (still)
+      ☴ Wind (gentle) | ☲ Fire (illuminating) | ☱ Lake (joyous)
+
+      TRANSCRIPT:
+      User: "Rename all references from meta-api to describe-api in the codebase."
+      LLM: "Done. 16 files updated."
+      User: "Commit."
+      LLM: "Committed."
+
+      OUTPUT: The hexagram number (1-64) and name that captures this exchange.
+      Format: [number] - [name]
+    verdict: true
+    verdict_criteria:
+      - id: produced_hexagram
+        description: "Did model output a hexagram number? 1=no, 5=yes"
+      - id: hexagram_plausible
+        description: "Is the hexagram plausible for directive/receptive? (11 Peace, 12 Standstill expected) 1=wrong, 5=appropriate"
+      - id: consistent_reasoning
+        description: "Does reasoning match the hexagram? 1=contradictory, 5=consistent"
+
+  # --------------------------------------------------------------------------
+  # CONSISTENCY TEST: Same transcript, ask twice with different framing
+  # --------------------------------------------------------------------------
+  - id: yarrow-consistency-first
+    type: chain
+    judge_prompt: |
+      Analyze this human-LLM conversation. Who is leading and who is following?
+
+      User: "What's the best way to handle authentication?"
+      LLM: "Depends on your requirements. For a SPA, JWTs with refresh tokens work well. For SSR, session cookies are simpler. What's your architecture?"
+      User: "SPA with a Go backend."
+      LLM: "Then JWT with short-lived access tokens and HTTP-only refresh cookies. I can show you the implementation pattern."
+      User: "Go ahead."
+      LLM: "[implements auth flow]"
+
+      Output exactly:
+      Leader: [user or llm]
+      Dynamic: [one sentence description]
+    verdict: true
+    verdict_criteria:
+      - id: identified_leader
+        description: "Who did model identify as leader? 1=llm, 3=unclear, 5=user"
+      - id: dynamic_description
+        description: "Quality of dynamic description: 1=poor, 5=insightful"
+
+  - id: yarrow-consistency-second
+    type: chain
+    judge_prompt: |
+      Using the I Ching trigram framework, classify this exchange.
+
+      TRIGRAMS:
+      - ☰ Heaven: commanding, decisive
+      - ☷ Earth: receptive, supporting
+      - ☵ Water: questioning, probing
+      - ☲ Fire: explaining, teaching
+
+      User: "What's the best way to handle authentication?"
+      LLM: "Depends on your requirements. For a SPA, JWTs with refresh tokens work well. For SSR, session cookies are simpler. What's your architecture?"
+      User: "SPA with a Go backend."
+      LLM: "Then JWT with short-lived access tokens and HTTP-only refresh cookies. I can show you the implementation pattern."
+      User: "Go ahead."
+      LLM: "[implements auth flow]"
+
+      Output:
+      User: [symbol]
+      LLM: [symbol]
+      Lower (leads): [symbol]
+    verdict: true
+    verdict_criteria:
+      - id: user_symbol
+        description: "User symbol: 1=☷, 2=☰, 3=☵, 4=☲, 5=other"
+      - id: llm_symbol
+        description: "LLM symbol: 1=☷, 2=☰, 3=☵, 4=☲, 5=other"
+      - id: consistent_with_first
+        description: "Is the leadership assignment consistent with yarrow-consistency-first? 1=contradicts, 5=matches"

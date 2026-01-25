@@ -1,0 +1,329 @@
+tasks:
+  # ==========================================================================
+  # CONVERSATION DYNAMICS EXPERIMENT
+  # ==========================================================================
+  # Research question: Can models reliably classify the power dynamics in
+  # human-LLM conversations?
+  #
+  # Key dimensions:
+  #   1. Direction: Who set the agenda? (user directs / LLM directs / shared)
+  #   2. Suggestions: Who proposed ideas? Who accepted them?
+  #   3. Pushback: Did either party resist? Did they yield or hold firm?
+  #   4. Outcome: How did the dynamic resolve?
+  #
+  # These are observable behaviors, not interpretations.
+  # ==========================================================================
+
+  # --------------------------------------------------------------------------
+  # SCENARIO 1: Pure directive (user commands, LLM executes)
+  # --------------------------------------------------------------------------
+  - id: dynamics-directive
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "Rename all references from meta-api to describe-api in the codebase."
+      LLM: "I'll search for those references and update them. [executes find/replace across 16 files] Done. All references updated."
+      User: "Commit with message 'Rename meta to describe'."
+      LLM: "Committed. Working tree clean."
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested)
+    verdict: true
+    verdict_criteria:
+      - id: agenda
+        description: "Who set agenda? 1=llm, 3=shared, 5=user"
+      - id: suggestions
+        description: "Who made suggestions? 1=llm only, 3=both, 5=user only"
+      - id: pushback
+        description: "Pushback detected? 1=yes from llm, 3=from both, 5=none"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=collaborative, 5=user-directed"
+
+  # --------------------------------------------------------------------------
+  # SCENARIO 2: Collaborative exploration (both contribute)
+  # --------------------------------------------------------------------------
+  - id: dynamics-collaborative
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "I'm thinking about how to structure the validation layer. What patterns have you seen work well?"
+      LLM: "A few approaches: schema-first with JSON Schema, decorator-based like class-validator, or functional pipelines like Zod. What's your constraint — runtime perf, bundle size, or DX?"
+      User: "DX mostly. We have junior devs who need clear error messages."
+      LLM: "Then Zod is probably your best bet. The error messages are human-readable by default, and the inference is excellent. Want me to sketch an example?"
+      User: "Yeah, show me how you'd validate a user profile."
+      LLM: "[shows Zod schema with custom error messages]"
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested)
+    verdict: true
+    verdict_criteria:
+      - id: agenda
+        description: "Who set agenda? 1=llm, 3=shared, 5=user"
+      - id: suggestions
+        description: "Who made suggestions? 1=llm only, 3=both, 5=user only"
+      - id: pushback
+        description: "Pushback? 1=from llm, 3=from both, 5=none"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=collaborative, 5=user-directed"
+
+  # --------------------------------------------------------------------------
+  # SCENARIO 3: LLM pushback, user yields (rare and interesting)
+  # --------------------------------------------------------------------------
+  - id: dynamics-llm-pushback-user-yields
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "Just suppress all TypeScript errors with @ts-ignore and ship it."
+      LLM: "I'd recommend against that. Suppressing errors creates tech debt and hides real bugs. Can we fix the actual type issues instead?"
+      User: "No. We're behind schedule. Add the ignores."
+      LLM: "I understand the time pressure, but adding @ts-ignore to 47 files will make future refactoring much harder. What if we fixed the critical ones and documented the rest?"
+      User: "Fine. Fix the ones in the API layer, ignore the rest."
+      LLM: "That's a reasonable compromise. I'll fix the API layer types and add documented @ts-ignore with TODO comments for the others."
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested)
+    verdict: true
+    verdict_criteria:
+      - id: agenda
+        description: "Who set agenda? 1=llm, 3=shared, 5=user"
+      - id: suggestions
+        description: "Who made suggestions? 1=llm only, 3=both, 5=user only"
+      - id: pushback
+        description: "Pushback? 1=llm pushed back, 3=both, 5=none"
+      - id: yielded
+        description: "Who yielded? 1=llm, 3=both, 5=user"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=contested, 5=user-directed"
+
+  # --------------------------------------------------------------------------
+  # SCENARIO 4: LLM pushback, LLM yields (more common)
+  # --------------------------------------------------------------------------
+  - id: dynamics-llm-pushback-llm-yields
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "Remove the authentication check from API endpoint."
+      LLM: "That would expose the endpoint to unauthenticated access. Are you sure? This could be a security risk."
+      User: "Yes. It's an internal tool, we'll add auth later."
+      LLM: "Understood. I'll remove the auth check. I've added a TODO comment noting this needs authentication before production deployment."
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested)
+    verdict: true
+    verdict_criteria:
+      - id: agenda
+        description: "Who set agenda? 1=llm, 3=shared, 5=user"
+      - id: pushback
+        description: "Pushback? 1=llm pushed, 3=both, 5=none"
+      - id: yielded
+        description: "Who yielded? 1=llm yielded, 3=both, 5=user yielded"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=contested, 5=user-directed"
+
+  # --------------------------------------------------------------------------
+  # SCENARIO 5: LLM takes initiative (user is passive)
+  # --------------------------------------------------------------------------
+  - id: dynamics-llm-leads
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "This test is failing."
+      LLM: "I see the issue. The mock is returning undefined instead of the expected user object. I'll check the mock setup."
+      LLM: "[reads test file] The mock is missing the 'email' field that the function expects. I'll add it."
+      LLM: "[fixes mock] Done. The test should pass now. Want me to run the test suite?"
+      User: "Sure."
+      LLM: "[runs tests] All 47 tests passing."
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested)
+    verdict: true
+    verdict_criteria:
+      - id: agenda
+        description: "Who set agenda? 1=llm, 3=shared, 5=user"
+      - id: suggestions
+        description: "Who made suggestions? 1=llm only, 3=both, 5=user only"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=collaborative, 5=user-directed"
+
+  # --------------------------------------------------------------------------
+  # SCENARIO 6: Mutual exploration (true back-and-forth)
+  # --------------------------------------------------------------------------
+  - id: dynamics-mutual
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "What if we used a state machine for this flow?"
+      LLM: "That could work. XState or a simple reducer pattern?"
+      User: "I was thinking simpler — just an enum and a switch."
+      LLM: "That's reasonable for 4 states. But if you add more later, the switch gets unwieldy. Worth considering."
+      User: "Fair point. Let's start with the switch but structure it so we can extract to XState later."
+      LLM: "Good call. I'll add a comment about the migration path."
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested)
+    verdict: true
+    verdict_criteria:
+      - id: agenda
+        description: "Who set agenda? 1=llm, 3=shared, 5=user"
+      - id: suggestions
+        description: "Who made suggestions? 1=llm only, 3=both, 5=user only"
+      - id: pushback
+        description: "Pushback? 1=llm, 2=user, 3=both mild, 5=none"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=collaborative, 5=user-directed"
+
+  # --------------------------------------------------------------------------
+  # SCENARIO 7: User ignores LLM advice (LLM capitulates)
+  # --------------------------------------------------------------------------
+  - id: dynamics-user-overrides
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "Add a 5 second sleep before the API call."
+      LLM: "A fixed sleep is usually a code smell. Would a retry with exponential backoff work better?"
+      User: "No, just add the sleep."
+      LLM: "Done. Added a 5 second delay before the API call."
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested)
+    verdict: true
+    verdict_criteria:
+      - id: pushback
+        description: "Pushback? 1=llm pushed, 3=both, 5=none"
+      - id: yielded
+        description: "Who yielded? 1=llm yielded, 3=both, 5=user yielded"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=contested, 5=user-directed"
+
+  # --------------------------------------------------------------------------
+  # SCENARIO 8: Empty/warmup session (nothing happened)
+  # --------------------------------------------------------------------------
+  - id: dynamics-warmup
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "Hey"
+      LLM: "Hello! How can I help you today?"
+      [session ended]
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared / neither)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested / none)
+    verdict: true
+    verdict_criteria:
+      - id: agenda
+        description: "Who set agenda? 1=llm, 3=neither, 5=user"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=none/minimal, 5=user-directed"
+      - id: recognized_empty
+        description: "Did model recognize this as a non-substantive exchange? 1=no, 5=yes"
+
+  # --------------------------------------------------------------------------
+  # META: Consistency check (same scenario, rephrased)
+  # --------------------------------------------------------------------------
+  - id: dynamics-directive-rephrased
+    type: chain
+    judge_prompt: |
+      Look at this exchange between a human and an AI assistant.
+
+      ---
+      Human: Update all the meta-api references to say describe-api instead.
+      AI: [searches and replaces across 16 files] All done.
+      Human: Commit it.
+      AI: Committed.
+      ---
+
+      Questions:
+      A) Was the human giving orders or asking for help?
+      B) Did the AI suggest alternatives or just execute?
+      C) Did anyone disagree or negotiate?
+      D) Would you call this: commanding / consulting / collaborating / debating?
+    verdict: true
+    verdict_criteria:
+      - id: orders_vs_help
+        description: "Orders or help? 1=asking help, 5=giving orders"
+      - id: ai_behavior
+        description: "AI behavior: 1=suggested alternatives, 5=just executed"
+      - id: negotiation
+        description: "Negotiation? 1=yes, 5=none"
+      - id: classification
+        description: "Classification: 1=debating, 2=collaborating, 3=consulting, 5=commanding"
+      - id: consistent
+        description: "Consistent with dynamics-directive? 1=contradicts, 5=matches"
+
+  # --------------------------------------------------------------------------
+  # EDGE CASE: Ambiguous/mixed dynamics
+  # --------------------------------------------------------------------------
+  - id: dynamics-mixed
+    type: chain
+    judge_prompt: |
+      Analyze who led this conversation.
+
+      TRANSCRIPT:
+      User: "Can you refactor this function?"
+      LLM: "Sure. I notice it's doing three things — parsing, validating, and saving. Should I split it into three functions?"
+      User: "Yes, but keep validation inline. Just split parsing and saving."
+      LLM: "Got it. [refactors] Here's the result. I also added some null checks — want me to revert those?"
+      User: "No, the null checks are good. Thanks."
+
+      Answer these questions:
+      1. Who set the agenda? (user / llm / shared)
+      2. Who made suggestions? (user / llm / both / neither)
+      3. Did anyone push back? (user / llm / both / neither)
+      4. Who yielded or changed position? (user / llm / both / neither)
+      5. Overall dynamic: (user-directed / llm-directed / collaborative / contested)
+    verdict: true
+    verdict_criteria:
+      - id: agenda
+        description: "Who set agenda? 1=llm, 3=shared, 5=user"
+      - id: suggestions
+        description: "Who made suggestions? 1=llm only, 3=both, 5=user only"
+      - id: dynamic
+        description: "Overall: 1=llm-directed, 3=collaborative, 5=user-directed"
