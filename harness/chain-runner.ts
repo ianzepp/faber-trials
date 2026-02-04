@@ -249,13 +249,19 @@ async function main() {
     }
   }
 
-  // Filter tasks
-  let tasks = chainTasks
+  // Filter tasks (supports glob patterns)
+  let tasks = chainTasks.filter(t => t.type === 'chain')
   if (cliArgs.task) {
-    tasks = chainTasks.filter(t => t.id === cliArgs.task)
+    const pattern = cliArgs.task
+    if (pattern.includes('*')) {
+      const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$')
+      tasks = tasks.filter(t => regex.test(t.id))
+    } else {
+      tasks = tasks.filter(t => t.id === pattern)
+    }
     if (tasks.length === 0) {
-      console.error(`Task not found: ${cliArgs.task}`)
-      console.error('Available tasks:', chainTasks.map(t => t.id).join(', '))
+      console.error(`No tasks match: ${cliArgs.task}`)
+      console.error('Available chain tasks:', chainTasks.filter(t => t.type === 'chain').map(t => t.id).join(', '))
       process.exit(1)
     }
   }
@@ -278,6 +284,18 @@ async function main() {
   const numStages = chainModels.length
   let completed = 0
   const total = tasks.length
+
+  // Stats tracking
+  const taskLatencies: { id: string; latency_ms: number; cost: number }[] = []
+  const modelLatencies: Record<string, number[]> = {}
+  for (const m of chainModels) {
+    modelLatencies[m.id] = []
+  }
+  if (verdictModel) {
+    modelLatencies[verdictModel.id] = []
+  }
+  let totalRunCost = 0
+  let totalRunLatency = 0
 
   console.log(`Running ${total} chain trials (${numStages} stages)`)
   console.log('')
@@ -330,6 +348,9 @@ async function main() {
         totalLatency += latency
         totalCost += cost
 
+        // Track per-model latency
+        modelLatencies[model.id].push(latency)
+
         if (verbose) {
           console.log(`  [${task.id}] Stage ${stage + 1} (${model.id}): ${latency}ms, $${cost.toFixed(4)}`)
         }
@@ -370,6 +391,9 @@ async function main() {
         totalLatency += latency
         totalCost += cost
 
+        // Track verdict model latency
+        modelLatencies[actualVerdictModel.id].push(latency)
+
         if (verbose) {
           console.log(`  [${task.id}] Verdict (${actualVerdictModel.id}): ${latency}ms, $${cost.toFixed(4)}`)
           if (verdict.scores) {
@@ -397,6 +421,11 @@ async function main() {
       // Log result
       appendFileSync(resultsFile, JSON.stringify(result) + '\n')
 
+      // Track stats
+      taskLatencies.push({ id: task.id, latency_ms: totalLatency, cost: totalCost })
+      totalRunLatency += totalLatency
+      totalRunCost += totalCost
+
       // Progress
       if (verbose) {
         console.log(`[${completed}/${total}] ${task.id}: ${totalLatency}ms, $${totalCost.toFixed(4)}`)
@@ -418,8 +447,42 @@ async function main() {
 
   if (!verbose) console.log('')
 
+  // Summary stats
   console.log('')
-  console.log(`Completed ${completed}/${total} trials`)
+  console.log('=== Summary ===')
+  console.log(`Completed: ${taskLatencies.length}/${total} trials`)
+  console.log(`Total time: ${(totalRunLatency / 1000).toFixed(1)}s`)
+  console.log(`Total cost: $${totalRunCost.toFixed(4)}`)
+  console.log('')
+
+  // Per-model latency stats
+  console.log('Model latency (ms):')
+  for (const [modelId, latencies] of Object.entries(modelLatencies)) {
+    if (latencies.length === 0) continue
+    const sorted = [...latencies].sort((a, b) => a - b)
+    const min = sorted[0]
+    const max = sorted[sorted.length - 1]
+    const median = sorted[Math.floor(sorted.length / 2)]
+    const avg = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+    const p95 = sorted[Math.floor(sorted.length * 0.95)]
+    console.log(`  ${modelId}: min=${min} avg=${avg} median=${median} p95=${p95} max=${max}`)
+  }
+  console.log('')
+
+  // Slowest/fastest tasks
+  if (taskLatencies.length > 0) {
+    const sorted = [...taskLatencies].sort((a, b) => a.latency_ms - b.latency_ms)
+    console.log('Fastest tasks:')
+    for (const t of sorted.slice(0, 3)) {
+      console.log(`  ${t.id}: ${t.latency_ms}ms`)
+    }
+    console.log('Slowest tasks:')
+    for (const t of sorted.slice(-3).reverse()) {
+      console.log(`  ${t.id}: ${t.latency_ms}ms`)
+    }
+    console.log('')
+  }
+
   console.log(`Results: ${resultsFile}`)
 }
 
